@@ -120,9 +120,9 @@ class Node
 //   return new PVector(x, y, z);
 // }
 
-void playNextMelodyNote()
+void playNextMelodyNote(float[][] melody)
 {
-  float freq = melodyPhrases[phraseIndex][noteIndex];
+  float freq = melody[phraseIndex][noteIndex];
 
   // playing the note
   SinOsc osc = new SinOsc(this);
@@ -142,10 +142,10 @@ void playNextMelodyNote()
   noteIndex++;
 
   // if phrase finished, go to next phrase
-  if (noteIndex >= melodyPhrases[phraseIndex].length)
+  if (noteIndex >= melody[phraseIndex].length)
   {
     noteIndex = 0;
-    phraseIndex = (phraseIndex + 1) % melodyPhrases.length; // next phrase (loop)
+    phraseIndex = (phraseIndex + 1) % melody.length; // next phrase (loop)
   }
 }
 
@@ -314,7 +314,7 @@ void draw()
         //currentNodeIdx = int(random(visibleNodes));
         focusStartTime = millis();
 
-        playNextMelodyNote();
+        playNextMelodyNote(melodyPhrases);
       }
 
       // getting the FFT amplitude average
