@@ -110,8 +110,6 @@ Input from the microphone is processed with a 512-band FFT:
 
 ### 🎥 Motion Input
 - Move hands → rotates the 3D node sphere
-- Big motion → switches to **C major**
-- Small motion → switches to **A minor**
 
 ### 🔊 Audio Input
 - Louder sounds → more edges  
