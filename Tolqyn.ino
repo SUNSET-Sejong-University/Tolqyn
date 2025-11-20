@@ -20,6 +20,9 @@ const int L3G4200D_ADDR = 0x69; //I2C address of the L3G4200D
 int16_t x, y, z; // 16-bit  signed integers
 float x_dps, y_dps, z_dps; // converted to degrees per second
 
+const int X_LED = 6;
+const int Y_LED = 5;
+const int Z_LED = 3;
 
 void setup()
 {  
@@ -33,10 +36,16 @@ void setup()
 
   delay(1500); //wait for the sensor to be ready 
   Serial.println("gyro ready");
+
+  pinMode(X_LED, OUTPUT);
+  pinMode(Y_LED, OUTPUT);
+  pinMode(Z_LED, OUTPUT);
 }
 
 void loop()
 {
+  float lastX, lastY, lastZ;
+  
   getGyroValues();  // reads raw x, y, and z values and updates with new values
 
   // convert raw values to degrees per second
@@ -51,6 +60,35 @@ void loop()
   Serial.println();
 
   delay(100); //Just here to slow down the serial to make it more readable
+
+  if (x_dps - lastX >= 1)
+  {
+    digitalWrite(X_LED, HIGH);
+    lastX = x_dps;
+  }
+  else
+  {
+    digitalWrite(X_LED, LOW);
+  }
+  
+  if (y_dps - lastY >= 1)
+  {
+    digitalWrite(Y_LED, HIGH);
+    lastY = y_dps;
+  }
+  else
+  {
+    digitalWrite(Y_LED, LOW);
+  }
+    if (z_dps - lastZ >= 1)
+  {
+    digitalWrite(Z_LED, HIGH);
+    lastZ = z_dps;
+  }
+  else
+  {
+    digitalWrite(Z_LED, LOW);
+  }
 }
 
 
