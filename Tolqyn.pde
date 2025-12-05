@@ -15,7 +15,7 @@ int visibleNodes = 0;
 
 //int currentNodeIdx = 0;   // currently focused node
 int focusStartTime = 0;     // when focus node was selected
-int focusDuration = 3000;   // 5 seconds duration of focus
+int focusDuration = 3000;   // 3 seconds duration of focus
 
 ArrayList<Node> nodes;             // 3D positions of each node (PVector has x, y, z)
 ArrayList<Float> nodeSizes;           // the size (thickness) of the point representing each node
@@ -96,8 +96,6 @@ class NodeDistance
 class Node
 {
   PVector position;
-  //int noteIndex;
-  //float currentFreq;
 
   public Node ()
   {
@@ -108,21 +106,8 @@ class Node
     float y = radius * sin(phi) * sin(theta);
     float z = radius * cos(phi); // depth variation
     this.position = new PVector(x, y, z);
-    //this.noteIndex = int(random(scale.length));
-    //this.currentFreq = scale[noteIndex];
   }
 }
-// generate a random node anywhere in 3D space
-// PVector randomNode()
-// {
-//   float radius = random(width / 5, width / 2);
-//   float theta = random(TWO_PI); // azimuth (hoz)
-//   float phi = random(PI); // polar (vert)
-//   float x = radius * sin(phi) * cos(theta);
-//   float y = radius * sin(phi) * sin(theta);
-//   float z = radius * cos(phi); // depth variation
-//   return new PVector(x, y, z);
-// }
 
 void playNextMelodyNote(float[][] melody)
 {
@@ -202,11 +187,7 @@ void draw()
   background(0);
   blendMode(ADD);
   lights();
-  translate(width/2, height/2, -500);          // move camera back a bit
-  //rotateX(sin(frameCount * 0.002) * PI/3);     // small back-and-forth tilt
-  //rotateY(angleY);                             // slow steady spin
-  //rotateZ(sin(frameCount * 0.0015) * PI/6);    // subtle drifting rotation
-  //angleY += 0.01;
+  translate(width/2, height/2, -500);  // move camera back a bit
   
   float dt = 0;
 
@@ -233,7 +214,6 @@ void draw()
   if (Cam.available()) 
   {
     Cam.read();
-    //image(Cam, 0, 0);
     pushMatrix();
       translate(0, 0, -10000); 
       rotateY(PI);  // mirror the camera
@@ -255,7 +235,6 @@ void draw()
       }
     }
     println("Motion Sum: " + motionSum);  
-    //float[] activeScale = cMajor; // default
     if (motionSum > 10000) 
     {
       float centroidX = motionX / motionSum;
@@ -264,9 +243,6 @@ void draw()
 
       targetAngleY = map(centroidX, 0, Cam.width, -PI/6, PI/6) * motionFactor;
       targetAngleX = map(centroidY, 0, Cam.height, -PI/6, PI/6) * motionFactor;
-    
-      // float motionEnergy = constrain(motionSum / 10000.0, 0, 2);
-      // activeScale = (motionEnergy < 0.5) ? aMinor : cMajor;
     }
 
     // copy current frame to previous for next comparison
@@ -300,7 +276,6 @@ void draw()
 
   // drawing each node as a 3D point, fading out over time
   // when fully faded, repositioning it randomly and resetting its size, color, and opacity
-  //float[] activeScale = cMajor;
   for (int i = 0; i < visibleNodes; i++)
   {
     Node n = nodes.get(i);
@@ -343,7 +318,6 @@ void draw()
         randomFocusNodes.clear(); // clearing the list first
         int randomFocusNodesCount = int(random(1, 6));  // randomizing the number of focus nodes
         for (int i = 0; i < randomFocusNodesCount; i++) randomFocusNodes.add(i, int(random(visibleNodes)));
-        //currentNodeIdx = int(random(visibleNodes));
         focusStartTime = millis();
 
         playNextMelodyNote(melodyPhrases);

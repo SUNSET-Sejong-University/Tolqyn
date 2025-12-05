@@ -1,3 +1,5 @@
+/* Adopted from Jim Lindblom of Sparkfun's code */
+
 #include <Wire.h>
 
 /* configuration registers from datasheet */
