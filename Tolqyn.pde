@@ -260,7 +260,7 @@ void draw()
   // Apply rotations to scene
   rotateX(fusedAngleX + sin(frameCount * 0.002) * PI/3);
   rotateY(fusedAngleY + frameCount * 0.01);
-  rotateZ(radians(gyroAngleZ) + sin(frameCount * 0.0015) * PI/6); 
+  rotateZ(radians(gyroAngleZ) + sin(frameCount * 0.002) * PI/3); 
 
   // ----- FFT -----
   fft.analyze(spectrum);
