@@ -42,7 +42,7 @@ The system:
 - Automatically loops forever  
 
 ### Gyroscope + Camera Fusion Rotation
-Tolkyn can rotate the entire 3D universe using physical motion from an external gyroscope (e.g., MPU-6050 or compatible IMU) combined with webcam-based motion detection.
+Tolkyn can rotate the entire 3D universe using physical motion from an external gyroscope (L3G4200D for this instance) combined with webcam-based motion detection.
 #### ⭐ What This Feature Does
   - Reads real-time X/Y/Z angular velocity from Arduino
   - Integrates gyro values to compute orientation
