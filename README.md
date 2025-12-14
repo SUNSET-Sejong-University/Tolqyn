@@ -3,6 +3,13 @@
 **Tolkyn** is a real-time, audio-responsive 3D generative art system written in **Processing (P3D)**. It visualizes thousands of drifting particles (“nodes”), glowing connections (“edges”), and melody-driven bursts, creating a living sculpture of motion, light, and sound.
 
 ---
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=pi5H7Lr1hQ8">
+    <img src="https://img.youtube.com/vi/pi5H7Lr1hQ8/0.jpg" width="100%" />
+  </a>
+</p>
+
+
 
 ## ✨ Features
 
