@@ -323,7 +323,6 @@ void draw()
         playNextMelodyNote(melodyPhrases);
       }
 
-      // getting the FFT amplitude average
       float amplitude = 0;
       for (int i = 0; i < bands; i++) amplitude = max(amplitude, spectrum[i]); // use the loudest band
 
