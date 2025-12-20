@@ -2,8 +2,17 @@ import java.util.*;
 import processing.sound.*;
 import processing.video.*;
 import processing.serial.*;
+import java.net.Socket;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.BufferedReader;
+import processing.data.JSONObject;
 
 Serial myPort;
+Socket socket;
+PrintWriter out;
+BufferedReader socketIn;
+
 float gx, gy, gz; // gyro values in dps
 float gyroAngleX = 0;
 float gyroAngleY = 0;
@@ -58,6 +67,13 @@ float[][] melodyPhrases = {
 
 int phraseIndex = 0;  // for the music phrase
 int noteIndex = 0;    // for the note inside the phrase
+
+// for recording the visuals for creators and artists
+boolean obsRecording = false;
+int lastOBSCommandTime = 0;
+int OBS_COOLDOWN = 3000; // ms
+
+float motionSum = 0;
 
 class Edge
 {
@@ -138,9 +154,40 @@ void playNextMelodyNote(float[][] melody)
   }
 }
 
+void startOBSRecording()
+{
+  println("OBS: Start Record");
+  exec(new String[]{
+    "bash","-c",
+    "xdotool key r"
+  });
+}
+
+void stopOBSRecording()
+{
+  println("OBS: Stop Record");
+  exec(new String[]{
+    "bash", "-c",
+    "xdotool key s"
+  });
+}
+
 void setup()
 {
   fullScreen(P3D);
+
+    // ---- socket code ----
+  try 
+  {
+    socket = new Socket("localhost", 5005);
+    out = new PrintWriter(socket.getOutputStream(), true);
+    socketIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+  }
+  catch (Exception e)
+  {
+    println("Could not connect to Python AI server");
+    e.printStackTrace();
+  }
 
   // ----- Nodes -----
   colorMode(HSB, 360, 100, 100, 255);
@@ -184,6 +231,30 @@ void setup()
 
 void draw()
 {
+  // Python -> Processing Communication
+    if (socketIn != null && out != null) 
+    {
+    try 
+    {
+      // send
+      JSONObject msg = new JSONObject();
+      msg.setFloat("angleX", angleX);
+      out.println(msg.toString());
+
+      // receive
+      if (socketIn.ready()) {
+        JSONObject res = JSONObject.parse(socketIn.readLine());
+        //println("Python says:", res);
+      }
+    }
+    catch (IOException e) {
+      println("Socket lost, retrying...");
+      socket = null;
+      socketIn = null;
+      out = null;
+    }
+  }
+
   background(0);
   blendMode(ADD);
   lights();
@@ -224,7 +295,8 @@ void draw()
     Cam.loadPixels();
     prevFrame.loadPixels();
     
-    float motionX = 0, motionY = 0, motionSum = 0;
+    float motionX = 0, motionY = 0;
+    motionSum = 0;
     for (int i = 0; i < Cam.pixels.length; i++) {
       float diff = abs(brightness(Cam.pixels[i]) - brightness(prevFrame.pixels[i]));
       if (diff > 15)  // ignore tiny noise
@@ -234,7 +306,7 @@ void draw()
         motionSum += diff;
       }
     }
-    println("Motion Sum: " + motionSum);  
+    //println("Motion Sum: " + motionSum);  
     if (motionSum > 10000) 
     {
       float centroidX = motionX / motionSum;
@@ -327,6 +399,21 @@ void draw()
       for (int i = 0; i < bands; i++) amplitude = max(amplitude, spectrum[i]); // use the loudest band
 
       float threshold = 0.05; // mic sensitivity threshold
+
+      boolean shouldRecord = amplitude > threshold || motionSum > 20000;
+      int now = millis();
+      if (shouldRecord && !obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
+      {
+        startOBSRecording();
+        obsRecording = true;
+        lastOBSCommandTime = now;
+      }
+      if (!shouldRecord && obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
+      {
+        stopOBSRecording();
+        obsRecording = false;
+        lastOBSCommandTime = now;
+      }
 
       if (amplitude > threshold)
       {
