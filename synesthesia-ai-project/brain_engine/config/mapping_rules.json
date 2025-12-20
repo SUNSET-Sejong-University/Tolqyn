@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-12-21T01:00:00Z",
+  "description": "Synesthesia mapping rules: Audio features to visual parameters",
+  "rules": {
+    "color_mapping": {
+      "frequency_ranges": {
+        "bass": {
+          "hz": [20, 250],
+          "hue": [0, 30],
+          "saturation": 0.8,
+          "description": "Low frequencies map to warm colors (red-orange)"
+        },
+        "mid": {
+          "hz": [250, 2000],
+          "hue": [60, 180],
+          "saturation": 0.6,
+          "description": "Mid frequencies map to yellow-cyan"
+        },
+        "treble": {
+          "hz": [2000, 20000],
+          "hue": [200, 280],
+          "saturation": 0.9,
+          "description": "High frequencies map to cool colors (blue-purple)"
+        }
+      },
+      "amplitude_to_brightness": {
+        "type": "linear",
+        "min": 0.3,
+        "max": 1.0
+      }
+    },
+    "motion_mapping": {
+      "onset_velocity": 0.75,
+      "decay_rate": 0.95,
+      "min_velocity": 0.1,
+      "max_velocity": 1.0,
+      "description": "Beat detection triggers motion pulses"
+    },
+    "particle_mapping": {
+      "energy_to_count": "exponential",
+      "count_range": [10, 200],
+      "size_range": [5, 50],
+      "energy_threshold": 0.05,
+      "description": "Audio energy controls particle count and size"
+    },
+    "spatial_mapping": {
+      "stereo_separation": true,
+      "pan_range": [-1.0, 1.0],
+      "depth_factor": 0.5
+    }
+  },
+  "learning_params": {
+    "adaptation_rate": 0.1,
+    "user_feedback_weight": 0.3,
+    "auto_adjust": false,
+    "description": "Parameters for AI learning (future implementation)"
+  },
+  "performance": {
+    "target_latency_ms": 30,
+    "sample_rate": 44100,
+    "block_size": 2048,
+    "overlap_factor": 0.5
+  }
+}
