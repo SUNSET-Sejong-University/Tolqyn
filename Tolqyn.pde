@@ -18,6 +18,9 @@ float gyroAngleX = 0;
 float gyroAngleY = 0;
 float gyroAngleZ = 0; 
 long lastGyroTime = 0;
+float rotGainX;
+float rotGainY;
+float rotGainZ;
 
 final int totalNodes = 3000; // total nodes
 int visibleNodes = 0;
@@ -154,23 +157,23 @@ void playNextMelodyNote(float[][] melody)
   }
 }
 
-void startOBSRecording()
-{
-  println("OBS: Start Record");
-  exec(new String[]{
-    "bash","-c",
-    "xdotool key r"
-  });
-}
+// void startOBSRecording()
+// {
+//   println("OBS: Start Record");
+//   exec(new String[]{
+//     "bash","-c",
+//     "xdotool key r"
+//   });
+// }
 
-void stopOBSRecording()
-{
-  println("OBS: Stop Record");
-  exec(new String[]{
-    "bash", "-c",
-    "xdotool key s"
-  });
-}
+// void stopOBSRecording()
+// {
+//   println("OBS: Stop Record");
+//   exec(new String[]{
+//     "bash", "-c",
+//     "xdotool key s"
+//   });
+// }
 
 void setup()
 {
@@ -239,12 +242,21 @@ void draw()
       // send
       JSONObject msg = new JSONObject();
       msg.setFloat("angleX", angleX);
+      msg.setFloat("angleY", angleY);
+      msg.setFloat("angleZ", angleZ);
       out.println(msg.toString());
+
+      rotGainX = 0.3;
+      rotGainY = 0.3;
+      rotGainZ = 0.3;
 
       // receive
       if (socketIn.ready()) {
         JSONObject res = JSONObject.parse(socketIn.readLine());
-        //println("Python says:", res);
+        rotGainX = res.getFloat("rotationGainX");
+        rotGainY = res.getFloat("rotationGainY");
+        rotGainZ = res.getFloat("rotationGainZ");
+        println("Python says:", res);
       }
     }
     catch (IOException e) {
@@ -326,13 +338,13 @@ void draw()
   angleX += (targetAngleX - angleX) * easing;
   angleY += (targetAngleY - angleY) * easing;
 
-  fusedAngleX = camWeight * angleX + gyroWeight * gyroAngleX;
-  fusedAngleY = camWeight * angleY + gyroWeight * gyroAngleY;
+  fusedAngleX = camWeight * angleX + gyroWeight * gyroAngleX * rotGainX;
+  fusedAngleY = camWeight * angleY + gyroWeight * gyroAngleY * rotGainY;
   
   // Apply rotations to scene
   rotateX(fusedAngleX + sin(frameCount * 0.002) * PI/3);
   rotateY(fusedAngleY + frameCount * 0.01);
-  rotateZ(radians(gyroAngleZ) + sin(frameCount * 0.002) * PI/3); 
+  rotateZ(radians(gyroAngleZ) * rotGainZ + sin(frameCount * 0.002) * PI/3); 
 
   // ----- FFT -----
   fft.analyze(spectrum);
@@ -400,20 +412,20 @@ void draw()
 
       float threshold = 0.05; // mic sensitivity threshold
 
-      boolean shouldRecord = amplitude > threshold || motionSum > 20000;
-      int now = millis();
-      if (shouldRecord && !obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
-      {
-        startOBSRecording();
-        obsRecording = true;
-        lastOBSCommandTime = now;
-      }
-      if (!shouldRecord && obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
-      {
-        stopOBSRecording();
-        obsRecording = false;
-        lastOBSCommandTime = now;
-      }
+      // boolean shouldRecord = amplitude > threshold || motionSum > 20000;
+      // int now = millis();
+      // if (shouldRecord && !obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
+      // {
+      //   startOBSRecording();
+      //   obsRecording = true;
+      //   lastOBSCommandTime = now;
+      // }
+      // if (!shouldRecord && obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
+      // {
+      //   stopOBSRecording();
+      //   obsRecording = false;
+      //   lastOBSCommandTime = now;
+      // }
 
       if (amplitude > threshold)
       {

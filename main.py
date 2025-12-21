@@ -1,27 +1,64 @@
-import socket, json
+import socket
+import json
+import time
+from aiengine import SpoonRotationController
 
-s = socket.socket()
-s.bind(("localhost", 5005))
-s.listen(1)
+HOST = "localhost"
+PORT = 5005
+AI_INTERVAL = 1.5  # seconds
+
+print("Starting Tolqyn AI server...")
+
+controller = SpoonRotationController()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind((HOST, PORT))
+sock.listen(1)
 
 print("Waiting for Processing...")
-conn, _ = s.accept()
-print("Processing connected")
+conn, addr = sock.accept()
+print("Processing connected:", addr)
 
-conn_file = conn.makefile("rwb")  # read/write buffered
+conn_file = conn.makefile("rwb")
+
+last_ai_time = 0.0
+last_response = {
+    "mode": "calm",
+    "rotationGainX": 0.3,
+    "rotationGainY": 0.3,
+    "rotationGainZ": 0.3
+}
 
 while True:
     line = conn_file.readline()
     if not line:
+        print("Processing disconnected")
         break
 
-    state = json.loads(line.decode())
-    print("From Processing:", state)
+    try:
+        msg = json.loads(line.decode())
+        ax = msg.get("angleX", 0.0)
+        ay = msg.get("angleY", 0.0)
+        az = msg.get("angleZ", 0.0)
+    except json.JSONDecodeError:
+        continue
 
-    # AI logic here
-    response = {
-        "angleBoostX": state.get("angleX", 0) * 0.5
-    }
+    now = time.time()
 
-    #conn_file.write((json.dumps(response) + "\n").encode())
-    #conn_file.flush()
+    # ---- Throttled AI reasoning ----
+    if now - last_ai_time >= AI_INTERVAL:
+        ai = controller.get_rotation_gains(ax, ay, az)
+        if ai:
+            last_response = {
+                "mode": ai.get("mode", "calm"),
+                "rotationGainX": ai.get("rotationGainX", 0.3),
+                "rotationGainY": ai.get("rotationGainY", 0.3),
+                "rotationGainZ": ai.get("rotationGainZ", 0.3)
+            }
+            last_ai_time = now
+            print("[AI]", last_response)
+
+    # ---- Always send last known safe values ----
+    conn_file.write((json.dumps(last_response) + "\n").encode())
+    conn_file.flush()
