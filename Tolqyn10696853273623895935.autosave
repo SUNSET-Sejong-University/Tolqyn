@@ -246,9 +246,9 @@ void draw()
       msg.setFloat("angleZ", angleZ);
       out.println(msg.toString());
 
-      // rotGainX = 0;
-      // rotGainY = 0;
-      // rotGainZ = 0;
+      rotGainX = 0.3;
+      rotGainY = 0.3;
+      rotGainZ = 0.3;
 
       // receive
       if (socketIn.ready()) {
@@ -338,13 +338,13 @@ void draw()
   angleX += (targetAngleX - angleX) * easing;
   angleY += (targetAngleY - angleY) * easing;
 
-  fusedAngleX = camWeight * angleX + gyroWeight * gyroAngleX;
-  fusedAngleY = camWeight * angleY + gyroWeight * gyroAngleY;
+  fusedAngleX = camWeight * angleX + gyroWeight * gyroAngleX * rotGainX;
+  fusedAngleY = camWeight * angleY + gyroWeight * gyroAngleY * rotGainY;
   
   // Apply rotations to scene
   rotateX(fusedAngleX + sin(frameCount * 0.002) * PI/3);
   rotateY(fusedAngleY + frameCount * 0.01);
-  rotateZ(radians(gyroAngleZ) + sin(frameCount * 0.002) * PI/3); 
+  rotateZ(radians(gyroAngleZ) * rotGainZ + sin(frameCount * 0.002) * PI/3); 
 
   // ----- FFT -----
   fft.analyze(spectrum);
@@ -410,7 +410,7 @@ void draw()
       float amplitude = 0;
       for (int i = 0; i < bands; i++) amplitude = max(amplitude, spectrum[i]); // use the loudest band
 
-      float threshold = 0.05; // mic sensitivity threshold
+      float threshold = 0.01; // mic sensitivity threshold
 
       // boolean shouldRecord = amplitude > threshold || motionSum > 20000;
       // int now = millis();
