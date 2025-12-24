@@ -5,22 +5,17 @@ import processing.serial.*;
 import java.net.Socket;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.FileWriter;
 import java.io.BufferedReader;
 import processing.data.JSONObject;
 
 Serial myPort;
-Socket socket;
-PrintWriter out;
-BufferedReader socketIn;
 
 float gx, gy, gz; // gyro values in dps
 float gyroAngleX = 0;
 float gyroAngleY = 0;
 float gyroAngleZ = 0; 
 long lastGyroTime = 0;
-float rotGainX;
-float rotGainY;
-float rotGainZ;
 
 final int totalNodes = 3000; // total nodes
 int visibleNodes = 0;
@@ -50,6 +45,7 @@ FFT fft;
 AudioIn in;
 int bands = 512;
 float[] spectrum = new float[bands];
+float Amplitude = 0;
 
 Capture Cam;
 PImage prevFrame;
@@ -76,7 +72,16 @@ boolean obsRecording = false;
 int lastOBSCommandTime = 0;
 int OBS_COOLDOWN = 3000; // ms
 
-float motionSum = 0;
+float motionSum = 0;  // total motion detected in the frame
+
+int currentLabel = 0;  // label for either idle, observe or engaged
+void keyPressed()   // set current label based on key press
+{
+  if (key == '0') currentLabel = 0;
+  else if (key =='1') currentLabel = 1;
+  else if (key == '2') currentLabel = 2;
+}
+PrintWriter csv; // for logging training data
 
 class Edge
 {
@@ -179,17 +184,14 @@ void setup()
 {
   fullScreen(P3D);
 
-    // ---- socket code ----
-  try 
+  try
   {
-    socket = new Socket("localhost", 5005);
-    out = new PrintWriter(socket.getOutputStream(), true);
-    socketIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    csv = new PrintWriter(new FileWriter("training_data.csv", true)); // append mode
+    csv.flush();
   }
   catch (Exception e)
   {
-    println("Could not connect to Python AI server");
-    e.printStackTrace();
+    println("Error creating CSV file: " + e.getMessage());
   }
 
   // ----- Nodes -----
@@ -234,39 +236,6 @@ void setup()
 
 void draw()
 {
-  // Python -> Processing Communication
-    if (socketIn != null && out != null) 
-    {
-    try 
-    {
-      // send
-      JSONObject msg = new JSONObject();
-      msg.setFloat("angleX", angleX);
-      msg.setFloat("angleY", angleY);
-      msg.setFloat("angleZ", angleZ);
-      out.println(msg.toString());
-
-      // rotGainX = 0;
-      // rotGainY = 0;
-      // rotGainZ = 0;
-
-      // receive
-      if (socketIn.ready()) {
-        JSONObject res = JSONObject.parse(socketIn.readLine());
-        rotGainX = res.getFloat("rotationGainX");
-        rotGainY = res.getFloat("rotationGainY");
-        rotGainZ = res.getFloat("rotationGainZ");
-        println("Python says:", res);
-      }
-    }
-    catch (IOException e) {
-      println("Socket lost, retrying...");
-      socket = null;
-      socketIn = null;
-      out = null;
-    }
-  }
-
   background(0);
   blendMode(ADD);
   lights();
@@ -429,7 +398,8 @@ void draw()
 
       if (amplitude > threshold)
       {
-        int numEdges = int(map(amplitude, threshold, 0.05, 1, 6));  // map amplitude to number of edges
+        Amplitude = amplitude;
+        int numEdges = int(map(amplitude, threshold, 1, 1, 6));  // map amplitude to number of edges
         numEdges = constrain(numEdges, 1, 3);                       // limit max edges to avoid clutter
 
         // for each focus node, find the pairwise distances to all other nodes
@@ -481,6 +451,15 @@ void draw()
       }
     }
   }
+  csv.println(
+    motionSum + "," + 
+    fusedAngleX + "," + 
+    fusedAngleY + "," + 
+    gyroAngleZ + "," + 
+    Amplitude + "," + 
+    currentLabel
+    );
+    csv.flush();
 }
 
 void serialEvent(Serial p)
@@ -496,4 +475,11 @@ void serialEvent(Serial p)
     gy = float(vals[1]);
     gz = float(vals[2]);
   }
+}
+
+void exit()
+{
+  csv.flush();
+  csv.close();
+  super.exit();
 }
