@@ -20,11 +20,12 @@ long lastGyroTime = 0;
 final int totalNodes = 3000; // total nodes
 int visibleNodes = 0;
 
-//int currentNodeIdx = 0;   // currently focused node
 int focusStartTime = 0;     // when focus node was selected
 int focusDuration = 3000;   // 3 seconds duration of focus
 
 ArrayList<Node> nodes;             // 3D positions of each node (PVector has x, y, z)
+ArrayList<Float> baseNodeSizes;     // the base size (thickness) of each node
+ArrayList<Float> nodePulse;         // for pulsing effect on nodes
 ArrayList<Float> nodeSizes;           // the size (thickness) of the point representing each node
 ArrayList<Integer> nodeColors;        // color of each node in HSB space
 ArrayList<Float> nodesAlpha;          // opacity of each node; lets nodes fade out over time
@@ -41,7 +42,8 @@ float camWeight = 0.5, gyroWeight = 0.5; // since cam is more stable
 int addInterval = 5;  // controls how often a new node becomes visible (in frames)
 int lastAddTime = 0;  // last time a new node was added (in frames)
 
-FFT fft;
+FFT fft;              // Fast Fourier Transform object
+BeatDetector beat;  // Beat Detector object
 AudioIn in;
 int bands = 512;
 float[] spectrum = new float[bands];
@@ -67,14 +69,9 @@ float[][] melodyPhrases = {
 int phraseIndex = 0;  // for the music phrase
 int noteIndex = 0;    // for the note inside the phrase
 
-// for recording the visuals for creators and artists
-boolean obsRecording = false;
-int lastOBSCommandTime = 0;
-int OBS_COOLDOWN = 3000; // ms
-
 float motionSum = 0;  // total motion detected in the frame
 
-int currentLabel = 0;  // label for either idle, observe or engaged
+int currentLabel = 1;  // label for either idle, observe or engaged
 void keyPressed()   // set current label based on key press
 {
   if (key == '0') currentLabel = 0;
@@ -162,24 +159,6 @@ void playNextMelodyNote(float[][] melody)
   }
 }
 
-// void startOBSRecording()
-// {
-//   println("OBS: Start Record");
-//   exec(new String[]{
-//     "bash","-c",
-//     "xdotool key r"
-//   });
-// }
-
-// void stopOBSRecording()
-// {
-//   println("OBS: Stop Record");
-//   exec(new String[]{
-//     "bash", "-c",
-//     "xdotool key s"
-//   });
-// }
-
 void setup()
 {
   fullScreen(P3D);
@@ -198,17 +177,21 @@ void setup()
   colorMode(HSB, 360, 100, 100, 255);
 
   nodes = new ArrayList<Node>();
+  baseNodeSizes = new ArrayList<Float>();
+  nodePulse = new ArrayList<Float>();
   nodeSizes = new ArrayList<Float>();
   nodeColors = new ArrayList<Integer>();
   nodesAlpha = new ArrayList<Float>();
   randomFocusNodes = new ArrayList<Integer>();
   edges = new ArrayList<Edge>();
 
-  //float[] activeScale = cMajor; // default scale
   for (int i = 0; i < totalNodes; i++)
   {
     nodes.add(new Node());
-    nodeSizes.add(random(10, 20));
+    float s = random(10, 20);
+    baseNodeSizes.add(s);
+    nodeSizes.add(s);
+    nodePulse.add(0.0);
     nodeColors.add(color(random(360), 80, 100));
     nodesAlpha.add(255.0); // bright saturated hues across full spectrum and giving full opacity initially
   }
@@ -216,13 +199,15 @@ void setup()
   noStroke();
 
   // ----- Audio -----
-  // create an input stream which is routed into the Amplitude analyzer
+  // create an input stream which is routed into the Amplitude and Beat analyzer
   fft = new FFT(this, bands);
+  beat = new BeatDetector(this);
   in = new AudioIn(this, 0);
   // start audio input
   in.start();
   // patch the AudioIn
   fft.input(in);
+  beat.input(in);
 
   // ----- Camera -----
   Cam = new Capture(this, 320, 240);
@@ -337,13 +322,28 @@ void draw()
     pushMatrix();
     translate(n.position.x, n.position.y, n.position.z);
     stroke(nodeColors.get(i), a);
-    strokeWeight(nodeSizes.get(i));
+
+    float pulse = nodePulse.get(i);
+    float base = baseNodeSizes.get(i);
+    pulse *= 0.85; // decay pulse over time
+    if (pulse < 0.05) pulse = 0.0;  // hard reset
+    float currentSize = base + pulse; // apply pulse to base size
+    currentSize = constrain(currentSize, base, base * 3.0);
+    nodePulse.set(i, pulse);
+    nodeSizes.set(i, currentSize);
+    //strokeWeight(nodeSizes.get(i));
+    strokeWeight(currentSize);
+
     point(0, 0, 0);
     popMatrix();
     if (a <= 0)
     {
       nodes.set(i, new Node());
-      nodeSizes.set(i, random(10, 12));
+      //nodeSizes.set(i, random(10, 12));
+      float s = random(10, 12);
+      baseNodeSizes.set(i, s);
+      nodeSizes.set(i, s);
+      nodePulse.set(i, 0.0);
       nodeColors.set(i, color(random(0, 256), random(0, 256), random(0, 256)));
       a = 255.0;
     }
@@ -376,90 +376,88 @@ void draw()
         playNextMelodyNote(melodyPhrases);
       }
 
-      float amplitude = 0;
-      for (int i = 0; i < bands; i++) amplitude = max(amplitude, spectrum[i]); // use the loudest band
-
-      float threshold = 0.05; // mic sensitivity threshold
-
-      // boolean shouldRecord = amplitude > threshold || motionSum > 20000;
-      // int now = millis();
-      // if (shouldRecord && !obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
-      // {
-      //   startOBSRecording();
-      //   obsRecording = true;
-      //   lastOBSCommandTime = now;
-      // }
-      // if (!shouldRecord && obsRecording && now - lastOBSCommandTime > OBS_COOLDOWN)
-      // {
-      //   stopOBSRecording();
-      //   obsRecording = false;
-      //   lastOBSCommandTime = now;
-      // }
-
-      if (amplitude > threshold)
+      if (!beat.isBeat())
       {
-        Amplitude = amplitude;
-        int numEdges = int(map(amplitude, threshold, 1, 1, 6));  // map amplitude to number of edges
-        numEdges = constrain(numEdges, 1, 3);                       // limit max edges to avoid clutter
+        float amplitude = 0;
+        for (int i = 0; i < bands; i++) amplitude = max(amplitude, spectrum[i]); // use the loudest band
 
-        // for each focus node, find the pairwise distances to all other nodes
-        for (int i = 0; i < randomFocusNodes.size(); i++)
+        float threshold = 0.05; // mic sensitivity threshold
+
+        if (amplitude > threshold)
         {
-          PVector mainNode = nodes.get(randomFocusNodes.get(i)).position;
-          ArrayList<NodeDistance> pairs = new ArrayList<NodeDistance>();
-          for (int j = 0; j < visibleNodes; j++)
-          {
-            if (j == i) continue;
-            float d = PVector.dist(mainNode, nodes.get(j).position);
-            pairs.add(new NodeDistance(j, d));
-          }
+          Amplitude = amplitude;
+          int numEdges = int(map(amplitude, threshold, 1, 1, 6));  // map amplitude to number of edges
+          numEdges = constrain(numEdges, 1, 3);                       // limit max edges to avoid clutter
 
-          //sort by distance (farthest first) using Java built-in Collections.sort() with a custom comparator to control how two items are compared when sorting
-          Collections.sort(pairs, new Comparator<NodeDistance>()
+          // for each focus node, find the pairwise distances to all other nodes
+          for (int i = 0; i < randomFocusNodes.size(); i++)
           {
-            public int compare(NodeDistance a, NodeDistance b)
+            PVector mainNode = nodes.get(randomFocusNodes.get(i)).position;
+            ArrayList<NodeDistance> pairs = new ArrayList<NodeDistance>();
+            for (int j = 0; j < visibleNodes; j++)
             {
-              return Float.compare(b.distance, a.distance);
+              if (j == i) continue;
+              float d = PVector.dist(mainNode, nodes.get(j).position);
+              pairs.add(new NodeDistance(j, d));
+            }
+
+            //sort by distance (farthest first) using Java built-in Collections.sort() with a custom comparator to control how two items are compared when sorting
+            Collections.sort(pairs, new Comparator<NodeDistance>()
+            {
+              public int compare(NodeDistance a, NodeDistance b)
+              {
+                return Float.compare(b.distance, a.distance);
+              }
+            }
+            );
+
+            // connect the focus node to a few of the farthest nodes
+            int connectCount = min(numEdges, pairs.size());
+            for (int k = 0; k < connectCount; k++)
+            {
+              int idx2 = pairs.get(k).index;
+              Node nodeA = nodes.get(randomFocusNodes.get(i)); // main node but getting the class object for music
+              Node nodeB = nodes.get(idx2);
+              PVector a = mainNode;
+              PVector b = nodes.get(idx2).position;
+
+              // soft color blend from node colors
+              int c1 = nodeColors.get(i);
+              int c2 = nodeColors.get(idx2);
+              int blended = lerpColor(c1, c2, random(0.3, 0.7));
+              float brightnessBoost = random(0.8, 1.2);
+              int edgeCol = color(
+                hue(blended),
+                saturation(blended),
+                constrain(brightness(blended) * brightnessBoost, 0, 100)
+                );
+              float thickness = random(0.5, 1.5);
+              edges.add(new Edge(a, b, edgeCol, thickness));
             }
           }
-          );
-
-          // connect the focus node to a few of the farthest nodes
-          int connectCount = min(numEdges, pairs.size());
-          for (int k = 0; k < connectCount; k++)
-          {
-            int idx2 = pairs.get(k).index;
-            Node nodeA = nodes.get(randomFocusNodes.get(i)); // main node but getting the class object for music
-            Node nodeB = nodes.get(idx2);
-            PVector a = mainNode;
-            PVector b = nodes.get(idx2).position;
-
-            // soft color blend from node colors
-            int c1 = nodeColors.get(i);
-            int c2 = nodeColors.get(idx2);
-            int blended = lerpColor(c1, c2, random(0.3, 0.7));
-            float brightnessBoost = random(0.8, 1.2);
-            int edgeCol = color(
-              hue(blended),
-              saturation(blended),
-              constrain(brightness(blended) * brightnessBoost, 0, 100)
-              );
-            float thickness = random(0.5, 1.5);
-            edges.add(new Edge(a, b, edgeCol, thickness));
-          }
+        }
+      }
+      else
+      {
+        // beat detected -> inject pulse into all visible nodes
+        float beatStrength = 1.0;
+        for (int i = 0; i < visibleNodes; i++)
+        {
+          nodePulse.set(i, nodePulse.get(i) + random(4, 10) * beatStrength);
         }
       }
     }
   }
-  csv.println(
-    motionSum + "," + 
-    fusedAngleX + "," + 
-    fusedAngleY + "," + 
-    gyroAngleZ + "," + 
-    Amplitude + "," + 
-    currentLabel
-    );
-    csv.flush();
+  // // logging data to CSV
+  // csv.println(
+  //   motionSum + "," + 
+  //   fusedAngleX + "," + 
+  //   fusedAngleY + "," + 
+  //   gyroAngleZ + "," + 
+  //   Amplitude + "," + 
+  //   currentLabel
+  //   );
+  //   csv.flush();
 }
 
 void serialEvent(Serial p)
