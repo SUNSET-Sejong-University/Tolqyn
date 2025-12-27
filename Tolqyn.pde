@@ -328,7 +328,7 @@ void draw()
     pulse *= 0.85; // decay pulse over time
     if (pulse < 0.05) pulse = 0.0;  // hard reset
     float currentSize = base + pulse; // apply pulse to base size
-    currentSize = constrain(currentSize, base, base * 3.0);
+    currentSize = constrain(currentSize, base, base * 1.5);
     nodePulse.set(i, pulse);
     nodeSizes.set(i, currentSize);
     //strokeWeight(nodeSizes.get(i));

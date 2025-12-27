@@ -21,12 +21,15 @@ const int L3G4200D_ADDR = 0x69; //I2C address of the L3G4200D
 
 int16_t x, y, z; // 16-bit  signed integers
 float lastX, lastY, lastZ;
-float threshold = 10.0;
+float threshold = 20.0;
 float x_dps, y_dps, z_dps; // converted to degrees per second
 
-const int X_LED = 6;
-const int Y_LED = 5;
-const int Z_LED = 3;
+const int X_LED = 3;
+const int Y_LED = 6;
+const int Z_LED = 5;
+const int DEBUG_LED = 8;
+const int BUZZER_PIN = 9;
+const float tune[3] = {739.99, 659.25, 587.33};
 
 void setup()
 {  
@@ -44,11 +47,20 @@ void setup()
   pinMode(X_LED, OUTPUT);
   pinMode(Y_LED, OUTPUT);
   pinMode(Z_LED, OUTPUT);
+  pinMode(DEBUG_LED, OUTPUT); 
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  for (int i = 0; i < 3; i++)
+  {
+    tone(BUZZER_PIN, tune[i]);
+    delay(300);
+  } 
+  noTone(BUZZER_PIN);
 }
 
 void loop()
 {
-  float lastX, lastY, lastZ;
+  //float lastX, lastY, lastZ;
   
   getGyroValues();  // reads raw x, y, and z values and updates with new values
 
@@ -93,6 +105,7 @@ void loop()
   {
     digitalWrite(Z_LED, LOW);
   }
+  digitalWrite(DEBUG_LED, HIGH);
 }
 
 
@@ -151,70 +164,3 @@ byte readRegister(byte reg)
   while(!Wire.available());
   return Wire.read();
 }
-// void getGyroValues(){
-
-//   byte xMSB = readRegister(L3G4200D_Address, 0x29);
-//   byte xLSB = readRegister(L3G4200D_Address, 0x28);
-//   x = ((xMSB << 8) | xLSB);
-
-//   byte yMSB = readRegister(L3G4200D_Address, 0x2B);
-//   byte yLSB = readRegister(L3G4200D_Address, 0x2A);
-//   y = ((yMSB << 8) | yLSB);
-
-//   byte zMSB = readRegister(L3G4200D_Address, 0x2D);
-//   byte zLSB = readRegister(L3G4200D_Address, 0x2C);
-//   z = ((zMSB << 8) | zLSB);
-// }
-
-// int setupL3G4200D(int scale){
-//   //From  Jim Lindblom of Sparkfun's code
-
-//   // Enable x, y, z and turn off power down:
-//   writeRegister(L3G4200D_Address, CTRL_REG1, 0b00001111);
-
-//   // If you'd like to adjust/use the HPF, you can edit the line below to configure CTRL_REG2:
-//   writeRegister(L3G4200D_Address, CTRL_REG2, 0b00000000);
-
-//   // Configure CTRL_REG3 to generate data ready interrupt on INT2
-//   // No interrupts used on INT1, if you'd like to configure INT1
-//   // or INT2 otherwise, consult the datasheet:
-//   writeRegister(L3G4200D_Address, CTRL_REG3, 0b00001000);
-
-//   // CTRL_REG4 controls the full-scale range, among other things:
-
-//   if(scale == 250){
-//     writeRegister(L3G4200D_Address, CTRL_REG4, 0b00000000);
-//   }else if(scale == 500){
-//     writeRegister(L3G4200D_Address, CTRL_REG4, 0b00010000);
-//   }else{
-//     writeRegister(L3G4200D_Address, CTRL_REG4, 0b00110000);
-//   }
-
-//   // CTRL_REG5 controls high-pass filtering of outputs, use it
-//   // if you'd like:
-//   writeRegister(L3G4200D_Address, CTRL_REG5, 0b00000000);
-// }
-
-// void writeRegister(int deviceAddress, byte address, byte val) {
-//     Wire.beginTransmission(deviceAddress); // start transmission to device 
-//     Wire.write(address);       // send register address
-//     Wire.write(val);         // send value to write
-//     Wire.endTransmission();     // end transmission
-// }
-
-// int readRegister(int deviceAddress, byte address){
-
-//     int v;
-//     Wire.beginTransmission(deviceAddress);
-//     Wire.write(address); // register to read
-//     Wire.endTransmission();
-
-//     Wire.requestFrom(deviceAddress, 1); // read a byte
-
-//     while(!Wire.available()) {
-//         // waiting
-//     }
-
-//     v = Wire.read();
-//     return v;
-// }
