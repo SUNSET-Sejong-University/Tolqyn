@@ -217,6 +217,8 @@ void setup()
   // ---- Serial communication with microcontroller ----
   myPort = new Serial(this, Serial.list()[0], 9600);
   myPort.bufferUntil('\n');
+
+  myPort.write("START\n"); // signal microcontroller to start sending data
 }
 
 void draw()
@@ -479,5 +481,6 @@ void exit()
 {
   csv.flush();
   csv.close();
+  myPort.write("TERMINATE\n");
   super.exit();
 }

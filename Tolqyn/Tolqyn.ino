@@ -29,7 +29,10 @@ const int Y_LED = 6;
 const int Z_LED = 5;
 const int DEBUG_LED = 8;
 const int BUZZER_PIN = 9;
-const float tune[3] = {739.99, 659.25, 587.33};
+const float startTune[3] = {739.99, 659.25, 587.33};
+const float endTune[3] = {587.33, 415.30, 440.00};
+
+String serialCmd = "";
 
 void setup()
 {  
@@ -49,19 +52,45 @@ void setup()
   pinMode(Z_LED, OUTPUT);
   pinMode(DEBUG_LED, OUTPUT); 
   pinMode(BUZZER_PIN, OUTPUT);
-
-  for (int i = 0; i < 3; i++)
-  {
-    tone(BUZZER_PIN, tune[i]);
-    delay(300);
-  } 
-  noTone(BUZZER_PIN);
 }
 
 void loop()
 {
   //float lastX, lastY, lastZ;
-  
+  while (Serial.available())
+  {
+    char c  = Serial.read();
+    if (c == '\n')
+    {
+      serialCmd.trim();
+      if (serialCmd == "START")
+      {
+        // lastX = lastY = lastZ = 0;
+        // digitalWrite(X_LED, LOW);
+        // digitalWrite(Y_LED, LOW);
+        // digitalWrite(Z_LED, LOW);
+        // digitalWrite(DEBUG_LED, LOW);
+        noTone(BUZZER_PIN);
+        playSound(startTune);
+      }
+      else if (serialCmd == "TERMINATE")
+      {
+        lastX = lastY = lastZ = 0;
+        digitalWrite(X_LED, LOW);
+        digitalWrite(Y_LED, LOW);
+        digitalWrite(Z_LED, LOW);
+        digitalWrite(DEBUG_LED, LOW);
+        noTone(BUZZER_PIN);
+        playSound(endTune);
+      }
+      serialCmd = "";
+    }
+    else
+    {
+      serialCmd += c;
+    }
+  }
+
   getGyroValues();  // reads raw x, y, and z values and updates with new values
 
   // convert raw values to degrees per second
@@ -164,3 +193,12 @@ byte readRegister(byte reg)
   while(!Wire.available());
   return Wire.read();
 }
+
+void playSound(const float* tune) {
+  for (int i = 0; i < 3; i++) {
+    tone(BUZZER_PIN, tune[i]);
+    delay(300);
+  }
+  noTone(BUZZER_PIN);
+}
+
