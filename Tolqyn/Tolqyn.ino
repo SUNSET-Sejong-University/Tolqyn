@@ -65,11 +65,6 @@ void loop()
       serialCmd.trim();
       if (serialCmd == "START")
       {
-        // lastX = lastY = lastZ = 0;
-        // digitalWrite(X_LED, LOW);
-        // digitalWrite(Y_LED, LOW);
-        // digitalWrite(Z_LED, LOW);
-        // digitalWrite(DEBUG_LED, LOW);
         noTone(BUZZER_PIN);
         playSound(startTune);
       }
