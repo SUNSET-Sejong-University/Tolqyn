@@ -84,12 +84,14 @@ The webcam feed is analyzed frame-to-frame:
 
 A mirrored live camera feed is rendered behind the scene at extreme depth (z = -10000), intended to be hidden from plain-sight.
 
-### 🔊 Audio Reactivity (FFT)
+### 🔊 Audio Reactivity (FFT and Beat-Driven)
 
-Input from the microphone is processed with a 512-band FFT:
-- The loudest frequency band is extracted each frame  
-- Large amplitudes trigger more edges  
-- Quiet audio produces sparse, minimal visuals
+- Input from the microphone is processed with a 512-band FFT:
+  - The loudest frequency band is extracted each frame  
+  - Large amplitudes trigger more edges  
+  - Quiet audio produces sparse, minimal visuals
+- A beat detection system identifies rhythmic onsets (kicks, pulses, percussive events).
+- Each detected beat triggers structural and visual responses in the node system.
 
 ### 🌈 Visual Aesthetics
 - Additive blending for glow effects  
