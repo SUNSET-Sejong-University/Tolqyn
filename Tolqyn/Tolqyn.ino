@@ -1,6 +1,7 @@
 /* Adopted from Jim Lindblom of Sparkfun's code */
 
 #include <Wire.h>
+#include <ArduinoBLE.h>
 
 /* configuration registers from datasheet */
 #define CTRL_REG1 0x20
@@ -34,10 +35,14 @@ const float endTune[3] = {587.33, 415.30, 440.00};
 
 String serialCmd = "";
 
+BLEService gyroService("180A"); // creating the service
+BLECharacteristic gyroChar("2A57", BLERead | BLENotify, 32);
+
 void setup()
 {  
   Serial.begin(9600);
   while(!Serial);
+  if(!BLE.begin()) while(1);
 
   Wire.begin();
   
@@ -52,11 +57,32 @@ void setup()
   pinMode(Z_LED, OUTPUT);
   pinMode(DEBUG_LED, OUTPUT); 
   pinMode(BUZZER_PIN, OUTPUT);
+
+  BLE.setLocalName("Tolkyn");
+  BLE.setAdvertisedService(gyroService);
+
+  gyroService.addCharacteristic(gyroChar);
+  BLE.addService(gyroService);
+
+  BLE.advertise();
 }
 
 void loop()
 {
-  //float lastX, lastY, lastZ;
+  BLEDevice central = BLE.central();
+  if (central)
+  {
+    while (central.connected())
+    {
+      getGyroValues();
+
+      char buffer[32];
+      snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%.2f\n", x_dps, y_dps, z_dps);
+      gyroChar.writeValue((uint8_t*)buffer, strlen(buffer));
+
+      delay(30);
+    }
+  }
   while (Serial.available())
   {
     char c  = Serial.read();
