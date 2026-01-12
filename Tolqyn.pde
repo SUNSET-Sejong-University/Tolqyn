@@ -8,8 +8,10 @@ import java.io.PrintWriter;
 import java.io.FileWriter;
 import java.io.BufferedReader;
 import processing.data.JSONObject;
+import hypermedia.net.*;
 
-Serial myPort;
+//Serial myPort;
+UDP udp;
 
 float gx, gy, gz; // gyro values in dps
 float gyroAngleX = 0;
@@ -215,10 +217,13 @@ void setup()
   prevFrame = createImage(Cam.width, Cam.height, RGB);
 
   // ---- Serial communication with microcontroller ----
-  myPort = new Serial(this, Serial.list()[0], 9600);
-  myPort.bufferUntil('\n');
+  //myPort = new Serial(this, Serial.list()[0], 9600);
+  //myPort.bufferUntil('\n');
 
-  myPort.write("START\n"); // signal microcontroller to start sending data
+  //myPort.write("START\n"); // signal microcontroller to start sending data
+
+  udp = new UDP(this, 6000);
+  udp.listen(true);
 }
 
 void draw()
@@ -462,14 +467,12 @@ void draw()
   //   csv.flush();
 }
 
-void serialEvent(Serial p)
+void receive(byte[] data) 
 {
-  String line = p.readStringUntil('\n');
-  if (line == null) return;
+  String line = trim(new String(data));
+  String[] vals = split(line, ',');
 
-  line = trim(line);
-  String[] vals = line.split(",");
-  if (vals.length == 3)
+  if (vals.length == 3) 
   {
     gx = float(vals[0]);
     gy = float(vals[1]);
@@ -477,10 +480,25 @@ void serialEvent(Serial p)
   }
 }
 
+// void serialEvent(Serial p)
+// {
+//   String line = p.readStringUntil('\n');
+//   if (line == null) return;
+
+//   line = trim(line);
+//   String[] vals = line.split(",");
+//   if (vals.length == 3)
+//   {
+//     gx = float(vals[0]);
+//     gy = float(vals[1]);
+//     gz = float(vals[2]);
+//   }
+// }
+
 void exit()
 {
   csv.flush();
   csv.close();
-  myPort.write("TERMINATE\n");
+  //myPort.write("TERMINATE\n");
   super.exit();
 }

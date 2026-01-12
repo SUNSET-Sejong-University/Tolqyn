@@ -40,8 +40,8 @@ BLECharacteristic gyroChar("2A57", BLERead | BLENotify, 32);
 
 void setup()
 {  
-  Serial.begin(9600);
-  while(!Serial);
+  //Serial.begin(9600);
+  //while(!Serial);
   if(!BLE.begin()) while(1);
 
   Wire.begin();
@@ -59,6 +59,7 @@ void setup()
   pinMode(BUZZER_PIN, OUTPUT);
 
   BLE.setLocalName("Tolkyn");
+  BLE.setDeviceName("Tolkyn");
   BLE.setAdvertisedService(gyroService);
 
   gyroService.addCharacteristic(gyroChar);
@@ -74,88 +75,89 @@ void loop()
   {
     while (central.connected())
     {
-      getGyroValues();
+      getGyroValues();  // reads raw x, y, and z values and updates with new values
+
+      // convert raw values to degrees per second
+      float sensitivity = 14.35; // LSB/deg/s for 2000 dps
+      x_dps = x / sensitivity;
+      y_dps = y / sensitivity;
+      z_dps = z / sensitivity; 
 
       char buffer[32];
       snprintf(buffer, sizeof(buffer), "%.2f,%.2f,%.2f\n", x_dps, y_dps, z_dps);
       gyroChar.writeValue((uint8_t*)buffer, strlen(buffer));
 
+      if (fabs(x_dps - lastX) >= threshold)
+      {
+        digitalWrite(X_LED, HIGH);
+        lastX = x_dps;
+      }
+      else
+      {
+        digitalWrite(X_LED, LOW);
+      }
+      
+      if (fabs(y_dps - lastY) >= threshold)
+      {
+        digitalWrite(Y_LED, HIGH);
+        lastY = y_dps;
+      }
+      else
+      {
+        digitalWrite(Y_LED, LOW);
+      }
+
+      if (fabs(z_dps - lastZ) >= threshold)
+      {
+        digitalWrite(Z_LED, HIGH);
+        lastZ = z_dps;
+      }
+      else
+      {
+        digitalWrite(Z_LED, LOW);
+      }
+      digitalWrite(DEBUG_LED, HIGH);
+      
       delay(30);
     }
   }
-  while (Serial.available())
-  {
-    char c  = Serial.read();
-    if (c == '\n')
-    {
-      serialCmd.trim();
-      if (serialCmd == "START")
-      {
-        noTone(BUZZER_PIN);
-        playSound(startTune);
-      }
-      else if (serialCmd == "TERMINATE")
-      {
-        lastX = lastY = lastZ = 0;
-        digitalWrite(X_LED, LOW);
-        digitalWrite(Y_LED, LOW);
-        digitalWrite(Z_LED, LOW);
-        digitalWrite(DEBUG_LED, LOW);
-        noTone(BUZZER_PIN);
-        playSound(endTune);
-      }
-      serialCmd = "";
-    }
-    else
-    {
-      serialCmd += c;
-    }
-  }
+  // while (Serial.available())
+  // {
+  //   char c  = Serial.read();
+  //   if (c == '\n')
+  //   {
+  //     serialCmd.trim();
+  //     if (serialCmd == "START")
+  //     {
+  //       noTone(BUZZER_PIN);
+  //       playSound(startTune);
+  //     }
+  //     else if (serialCmd == "TERMINATE")
+  //     {
+  //       lastX = lastY = lastZ = 0;
+  //       digitalWrite(X_LED, LOW);
+  //       digitalWrite(Y_LED, LOW);
+  //       digitalWrite(Z_LED, LOW);
+  //       digitalWrite(DEBUG_LED, LOW);
+  //       noTone(BUZZER_PIN);
+  //       playSound(endTune);
+  //     }
+  //     serialCmd = "";
+  //   }
+  //   else
+  //   {
+  //     serialCmd += c;
+  //   }
+  // }
 
-  getGyroValues();  // reads raw x, y, and z values and updates with new values
 
-  // convert raw values to degrees per second
-  float sensitivity = 14.35; // LSB/deg/s for 2000 dps
-  x_dps = x / sensitivity;
-  y_dps = y / sensitivity;
-  z_dps = z / sensitivity; 
+  //Serial.print(x_dps, 2); Serial.print(",");
+  //Serial.print(y_dps, 2); Serial.print(",");
+  //Serial.println(z_dps, 2);
 
-  Serial.print(x_dps, 2); Serial.print(",");
-  Serial.print(y_dps, 2); Serial.print(",");
-  Serial.println(z_dps, 2);
+  //delay(100); //Just here to slow down the serial to make it more readable
 
-  delay(100); //Just here to slow down the serial to make it more readable
 
-  if (fabs(x_dps - lastX) >= threshold)
-  {
-    digitalWrite(X_LED, HIGH);
-    lastX = x_dps;
-  }
-  else
-  {
-    digitalWrite(X_LED, LOW);
-  }
-  
-  if (fabs(y_dps - lastY) >= threshold)
-  {
-    digitalWrite(Y_LED, HIGH);
-    lastY = y_dps;
-  }
-  else
-  {
-    digitalWrite(Y_LED, LOW);
-  }
-
-  if (fabs(z_dps - lastZ) >= threshold)
-  {
-    digitalWrite(Z_LED, HIGH);
-    lastZ = z_dps;
-  }
-  else
-  {
-    digitalWrite(Z_LED, LOW);
-  }
-  digitalWrite(DEBUG_LED, HIGH);
 }
 
 
