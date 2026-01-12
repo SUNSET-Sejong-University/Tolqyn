@@ -224,6 +224,8 @@ void setup()
 
   udp = new UDP(this, 6000);
   udp.listen(true);
+
+  udp.send("START", "127.0.0.1", 6001);
 }
 
 void draw()
@@ -470,6 +472,7 @@ void draw()
 void receive(byte[] data) 
 {
   String line = trim(new String(data));
+  if (line.equals("START") || line.equals("TERMINATE")) return;
   String[] vals = split(line, ',');
 
   if (vals.length == 3) 
@@ -500,5 +503,7 @@ void exit()
   csv.flush();
   csv.close();
   //myPort.write("TERMINATE\n");
+  udp.send("TERMINATE", "127.0.0.1", 6001);
+  udp.close();
   super.exit();
 }

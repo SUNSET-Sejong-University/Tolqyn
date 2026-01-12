@@ -37,6 +37,7 @@ String serialCmd = "";
 
 BLEService gyroService("180A"); // creating the service
 BLECharacteristic gyroChar("2A57", BLERead | BLENotify, 32);
+BLECharacteristic cmdChar("2A58", BLEWrite, 20);
 
 void setup()
 {  
@@ -63,6 +64,7 @@ void setup()
   BLE.setAdvertisedService(gyroService);
 
   gyroService.addCharacteristic(gyroChar);
+  gyroService.addCharacteristic(cmdChar);
   BLE.addService(gyroService);
 
   BLE.advertise();
@@ -75,6 +77,37 @@ void loop()
   {
     while (central.connected())
     {
+      if (cmdChar.written())
+      {
+        String command = "";
+        int len = cmdChar.valueLength();
+        uint8_t buffer[20];
+        cmdChar.readValue(buffer, len);
+
+        for (int i = 0; i < len; i++)
+        {
+          command += (char)buffer[i];
+        }
+        
+        command.trim();
+
+        if (command == "START")
+        {
+          noTone(BUZZER_PIN);
+          playSound(startTune);
+        }
+        else if (command == "TERMINATE")
+        {
+          lastX = lastY = lastZ = 0;
+          digitalWrite(X_LED, LOW);
+          digitalWrite(Y_LED, LOW);
+          digitalWrite(Z_LED, LOW);
+          digitalWrite(DEBUG_LED, LOW);
+          noTone(BUZZER_PIN);
+          playSound(endTune);
+        }
+      }
+      
       getGyroValues();  // reads raw x, y, and z values and updates with new values
 
       // convert raw values to degrees per second
@@ -117,7 +150,7 @@ void loop()
         digitalWrite(Z_LED, LOW);
       }
       digitalWrite(DEBUG_LED, HIGH);
-      
+
       delay(30);
     }
   }
